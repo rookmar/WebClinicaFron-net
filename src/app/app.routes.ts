@@ -15,6 +15,12 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./pages/dashboard/dashboard.component').then(m => m.DashboardComponent),
       },
+      {
+        path: 'menu-demo',
+        loadComponent: () =>
+          import('./pages/menu-dinamico/menu-dinamico.component')
+            .then(m => m.MenuDinamicoComponent),
+      },
     ],
   },
   { path: '', redirectTo: 'login', pathMatch: 'full' },

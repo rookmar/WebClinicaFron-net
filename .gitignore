@@ -1,1 +1,5 @@
-(empty)
+# Build output
+dist/
+
+# Angular cache
+.angular/
