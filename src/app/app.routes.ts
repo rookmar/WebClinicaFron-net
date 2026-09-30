@@ -21,6 +21,21 @@ export const routes: Routes = [
           import('./pages/menu-dinamico/menu-dinamico.component')
             .then(m => m.MenuDinamicoComponent),
       },
+      // ---------- Módulo Pacientes ----------
+      {
+        // i. Registro de datos generales (listado + alta/edición)
+        path: 'pacientes',
+        loadComponent: () =>
+          import('./pages/pacientes/pacientes-list.component')
+            .then(m => m.PacientesListComponent),
+      },
+      {
+        // ii. Historial de consultas y tratamientos vinculados al paciente
+        path: 'pacientes/:id/historial',
+        loadComponent: () =>
+          import('./pages/pacientes/paciente-historial.component')
+            .then(m => m.PacienteHistorialComponent),
+      },
     ],
   },
   { path: '', redirectTo: 'login', pathMatch: 'full' },
