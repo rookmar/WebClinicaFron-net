@@ -1,5 +1,3 @@
-# Build output
-dist/
-
-# Angular cache
+# Angular build artifacts
 .angular/
+dist/
