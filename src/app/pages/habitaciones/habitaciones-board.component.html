@@ -173,8 +173,8 @@
                 {{ e.mensaje }}
               </div>
               <div class="tiny text-muted mt-1">
-                {{ e.sucursalNombre }} · @{{ e.usuarioOrigen }} · {{ horaEvento(e.fechaHora) }}
-                @if (e.estadoAnterior) { <span class="ms-1">({{ e.estadoAnterior }} → {{ e.estadoNuevo }})</span> }
+                {{ e.sucursalNombre }} · {{ e.usuarioOrigen }} · {{ horaEvento(e.fechaHora) }}
+                <span class="ms-1" [hidden]="!e.estadoAnterior">({{ e.estadoAnterior }} → {{ e.estadoNuevo }})</span>
               </div>
             </div>
           } @empty {
@@ -239,7 +239,7 @@
       <div class="d-flex justify-content-end gap-2 mt-4">
         <button class="btn btn-sm btn-outline-secondary" (click)="modalAbierto = false">Cancelar</button>
         <button class="btn btn-sm btn-primary" [disabled]="guardando" (click)="guardar()">
-          @if (guardando) { <span class="spinner-border spinner-border-sm me-1"></span> }Guardar
+          <span class="spinner-border spinner-border-sm me-1" [hidden]="!guardando"></span>Guardar
         </button>
       </div>
       </div></div>
@@ -278,7 +278,7 @@
       <div class="d-flex justify-content-end gap-2">
         <button class="btn btn-sm btn-outline-secondary" (click)="modalAsig = false">Cancelar</button>
         <button class="btn btn-sm btn-success" [disabled]="guardando" (click)="confirmarAsignacion()">
-          @if (guardando) { <span class="spinner-border spinner-border-sm me-1"></span> }Asignar y registrar ingreso
+          <span class="spinner-border spinner-border-sm me-1" [hidden]="!guardando"></span>Asignar y registrar ingreso
         </button>
       </div>
       </div></div>
@@ -316,9 +316,12 @@
       <div class="d-flex justify-content-end gap-2">
         <button class="btn btn-sm btn-outline-secondary" (click)="modalEgreso = false">Cancelar</button>
         <button class="btn btn-sm btn-warning" [disabled]="guardando" (click)="confirmarEgreso()">
-          @if (guardando) { <span class="spinner-border spinner-border-sm me-1"></span> }Confirmar egreso
+          <span class="spinner-border spinner-border-sm me-1" [hidden]="!guardando"></span>Confirmar egreso
         </button>
       </div>
       </div></div>
     </div>
   </div>
+}
+}
+}
