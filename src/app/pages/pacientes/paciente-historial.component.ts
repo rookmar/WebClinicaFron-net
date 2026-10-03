@@ -395,6 +395,20 @@ export class PacienteHistorialComponent implements OnInit {
     return (this.ficha()?.evoluciones ?? []).filter(e => e.idConsulta === idConsulta);
   }
 
+  /** Evoluciones NO vinculadas a ninguna consulta (aparecen sueltas en la línea de tiempo) */
+  evolucionesSueltas() {
+    const h = this.ficha();
+    if (!h) return [];
+    return h.evoluciones.filter(x => !x.idConsulta || !h.consultas.some(cc => cc.idConsulta === x.idConsulta));
+  }
+
+  /** Exámenes NO vinculados a ninguna consulta (aparecen sueltos en la línea de tiempo) */
+  examenesSueltos() {
+    const h = this.ficha();
+    if (!h) return [];
+    return h.examenes.filter(x => !x.idConsulta || !h.consultas.some(cc => cc.idConsulta === x.idConsulta));
+  }
+
   /** Exámenes sin resultado capturado aún (para badge "pendiente") */
   examenPendiente(e: Examen): boolean {
     return !e.resultado || !e.resultado.trim();

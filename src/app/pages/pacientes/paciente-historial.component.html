@@ -11,7 +11,7 @@
     <div class="alert alert-info">{{ aviso() }}</div>
   }
 
-  @if (cargando() && !historial()) {
+  @if (cargando() && !ficha()) {
     <div class="card p-4 text-center text-muted">
       <span class="spinner-border spinner-border-sm me-2"></span>Cargando historial…
     </div>
@@ -133,11 +133,11 @@
                   </header>
                   <p class="who">
                     <i class="bi bi-person-badge"></i> {{ c.medicoNombre }}
-                    @if (c.especialidad) { <span class="pill">{{ c.especialidad }}</span> }
+                    <span class="pill" [hidden]="!c.especialidad">{{ c.especialidad }}</span>
                     <span class="pill ghost"><i class="bi bi-geo-alt"></i> {{ c.sucursalNombre }}</span>
                   </p>
-                  @if (c.motivoConsulta) { <p class="line"><b>Motivo:</b> {{ c.motivoConsulta }}</p> }
-                  @if (c.sintomas) { <p class="line"><b>Síntomas:</b> {{ c.sintomas }}</p> }
+                  <p class="line" [hidden]="!c.motivoConsulta"><b>Motivo:</b> {{ c.motivoConsulta }}</p>
+                  <p class="line" [hidden]="!c.sintomas"><b>Síntomas:</b> {{ c.sintomas }}</p>
                   @if (diagnosticosDe(c.idConsulta).length) {
                     <p class="line"><b>Diagnóstico(s):</b>
                       @for (d of diagnosticosDe(c.idConsulta); track d.idDiagnostico) {
@@ -176,7 +176,7 @@
             }
 
             <!-- Exámenes/evoluciones no vinculados a una consulta también aparecen en la línea -->
-            @for (ev of h.evoluciones.filter(x => !x.idConsulta || !h.consultas.some(cc => cc.idConsulta === x.idConsulta)); track ev.idEvolucion) {
+            @for (ev of evolucionesSueltas(); track ev.idEvolucion) {
               <li class="tl-item">
                 <span class="tl-dot evol"></span>
                 <div class="tl-body">
@@ -189,7 +189,7 @@
                 </div>
               </li>
             }
-            @for (e of h.examenes.filter(x => !x.idConsulta || !h.consultas.some(cc => cc.idConsulta === x.idConsulta)); track e.idExamen) {
+            @for (e of examenesSueltos(); track e.idExamen) {
               <li class="tl-item">
                 <span class="tl-dot exam"></span>
                 <div class="tl-body">
@@ -220,7 +220,7 @@
               <div>
                 <h3>Consulta #{{ c.idConsulta }} — {{ fmtFechaHora(c.fechaConsulta) }}</h3>
                 <p class="small text-muted mb-0">
-                  {{ c.medicoNombre }}@if (c.especialidad) { · {{ c.especialidad }} } · {{ c.sucursalNombre }}
+                  {{ c.medicoNombre }}{{ c.especialidad ? " · " + c.especialidad : "" }} · {{ c.sucursalNombre }}
                 </p>
               </div>
               <div class="btn-group">
@@ -280,7 +280,7 @@
                         {{ fmtFecha(t.fechaInicio) }} → {{ fmtFecha(t.fechaFin) }}
                         · {{ estadoTratamiento(t) }}
                       </small>
-                      @if (t.indicaciones) { <p class="ind">Indicaciones: {{ t.indicaciones }}</p> }
+                      <p class="ind" [hidden]="!t.indicaciones">Indicaciones: {{ t.indicaciones }}</p>
                     </div>
                   }
                 </div>
@@ -458,7 +458,7 @@
             <span><b>Hab. {{ hab.numeroHabitacion }}</b> — {{ hab.sucursalNombre }}</span>
             <small>Ingreso: {{ fmtFechaHora(hab.fechaIngreso) }} ·
               Egreso: {{ hab.fechaEgreso ? fmtFechaHora(hab.fechaEgreso) : 'actualmente internado' }}</small>
-            @if (hab.observaciones) { <p class="ind">{{ hab.observaciones }}</p> }
+            <p class="ind" [hidden]="!hab.observaciones">{{ hab.observaciones }}</p>
           </div>
         }
       </section>
@@ -483,7 +483,7 @@
               <select class="form-select" [(ngModel)]="formConsulta.idMedico">
                 <option value="">— Seleccione —</option>
                 @for (m of medicos; track m.idEmpleado) {
-                  <option [ngValue]="m.idEmpleado">{{ m.nombre }}@if (m.especialidad) { — {{ m.especialidad }} }</option>
+                  <option [ngValue]="m.idEmpleado">{{ m.nombre }}{{ m.especialidad ? " — " + m.especialidad : "" }}</option>
                 }
               </select>
             </div>
@@ -618,7 +618,7 @@
               <select class="form-select" [(ngModel)]="formExamen.idMedico">
                 <option value="">— Seleccione —</option>
                 @for (m of medicos; track m.idEmpleado) {
-                  <option [ngValue]="m.idEmpleado">{{ m.nombre }}@if (m.especialidad) { — {{ m.especialidad }} }</option>
+                  <option [ngValue]="m.idEmpleado">{{ m.nombre }}{{ m.especialidad ? " — " + m.especialidad : "" }}</option>
                 }
               </select>
             </div>
@@ -671,7 +671,7 @@
               <select class="form-select" [(ngModel)]="formEvolucion.idMedico">
                 <option value="">— Seleccione —</option>
                 @for (m of medicos; track m.idEmpleado) {
-                  <option [ngValue]="m.idEmpleado">{{ m.nombre }}@if (m.especialidad) { — {{ m.especialidad }} }</option>
+                  <option [ngValue]="m.idEmpleado">{{ m.nombre }}{{ m.especialidad ? " — " + m.especialidad : "" }}</option>
                 }
               </select>
             </div>

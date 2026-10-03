@@ -6,7 +6,9 @@
     "start": "ng serve",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
-    "test": "ng test"
+    "test": "ng test",
+    "check:templates": "node scripts/check-templates.js",
+    "verify": "npm run check:templates && npm run build"
   },
   "private": true,
   "dependencies": {
