@@ -11,7 +11,18 @@ export const MOCK_MENU: MenuItem[] = [
     icon: 'bi bi-tools',
     children: [
       { label: 'Pacientes', route: '/dashboard/pacientes', icon: 'bi bi-people' },
-      { label: 'Medicamentos', route: '/dashboard/medicamentos', icon: 'bi bi-capsule' },
+      {
+        label: 'Historial clínico',
+        route: '/dashboard/pacientes',
+        icon: 'bi bi-clipboard2-pulse',
+        roles: ['ADMIN', 'MEDICO'],
+      },
+      { label: 'Medicamentos', route: '/dashboard/inventario', icon: 'bi bi-capsule' },
+      {
+        label: 'Inventario: entradas/salidas',
+        route: '/dashboard/inventario/movimientos',
+        icon: 'bi bi-arrow-left-right',
+      },
       { label: 'Usuarios', route: '/dashboard/usuarios', icon: 'bi bi-person-gear', roles: ['ADMIN'] },
     ],
   },
