@@ -160,3 +160,66 @@ export interface CatalogoSucursal {
   idSucursal: number;
   nombre: string;
 }
+
+/* ------------------------------------------------------------------ */
+/* HISTORIAL CLÍNICO — Módulo independiente (consultas, exámenes,      */
+/* diagnósticos, evoluciones). Espejo de las tablas 6 del script SQL.   */
+/* ------------------------------------------------------------------ */
+
+/** Datos generales del paciente para la ficha del historial clínico. */
+export interface PacienteResumen {
+  idPaciente: number;
+  nombres: string;
+  apellidos: string;
+  dpi: string | null;
+  fechaNacimiento: string;
+  edadAnios: number;
+  sexo: string | null;
+  telefono: string | null;
+  correo: string | null;
+  activo: boolean;
+}
+
+/** Ficha completa: GET /api/HistorialClinico/{idPaciente} */
+export interface FichaHistorial {
+  paciente: PacienteResumen;
+  consultas: Consulta[];
+  diagnosticos: Diagnostico[];
+  tratamientos: Tratamiento[];
+  examenes: Examen[];
+  evoluciones: Evolucion[];
+  habitaciones: AsignacionHabitacion[];
+}
+
+/** Filtros de la vista global "Historial clínico" (inciso i-iv). */
+export interface HistorialFiltro {
+  pacienteId: number | '';
+  medicoId: number | '';
+  desde: string; // 'YYYY-MM-DD'
+  hasta: string;
+  texto: string;
+}
+
+/** Payload POST /api/HistorialClinico/Examenes (tabla Examen). */
+export interface ExamenNuevo {
+  idPaciente: number;
+  idConsulta: number | null;
+  idMedico: number;
+  nombreExamen: string;
+  fechaExamen: string; // ISO datetime
+  resultado: string;
+}
+
+/** Payload POST /api/HistorialClinico/Evoluciones (tabla Evolucion). */
+export interface EvolucionNueva {
+  idPaciente: number;
+  idConsulta: number | null;
+  idMedico: number;
+  fechaEvolucion: string; // ISO datetime
+  descripcion: string;
+}
+
+/** Payload PUT genérico para editar registros clínicos ya asignados. */
+export interface ActualizacionClinica {
+  [campo: string]: string | number | null;
+}

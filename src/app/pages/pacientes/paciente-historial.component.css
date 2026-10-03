@@ -145,6 +145,11 @@
   box-shadow: 0 0 0 1px #dbeafe;
 }
 
+/* Colores por tipo de registro en la línea de tiempo */
+.tl-dot.consult { background: #0d6efd; }
+.tl-dot.evol { background: #f59e0b; box-shadow: 0 0 0 1px #fde68a; }
+.tl-dot.exam { background: #0ea5e9; box-shadow: 0 0 0 1px #bae6fd; }
+
 .tl-body header {
   display: flex;
   justify-content: space-between;

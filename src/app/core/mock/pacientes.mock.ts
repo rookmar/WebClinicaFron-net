@@ -7,8 +7,10 @@ import {
   Diagnostico,
   Evolucion,
   Examen,
+  FichaHistorial,
   HistorialPaciente,
   Paciente,
+  PacienteResumen,
   Tratamiento,
 } from '../models/paciente.model';
 
@@ -20,6 +22,8 @@ let SEQ_PACIENTE = 100;
 let SEQ_CONSULTA = 100;
 let SEQ_DIAGNOSTICO = 100;
 let SEQ_TRATAMIENTO = 100;
+let SEQ_EXAMEN = 100;
+let SEQ_EVOLUCION = 100;
 
 const HOY = new Date();
 const fecha = (d: Date) => d.toISOString().slice(0, 10);
@@ -299,4 +303,134 @@ export function mockCatalogoMedicos(): Observable<CatalogoMedico[]> {
 
 export function mockCatalogoSucursales(): Observable<CatalogoSucursal[]> {
   return of(SUCURSALES.filter(() => true)).pipe(delay(200));
+}
+
+/* ================================================================== */
+/* MÓDULO HISTORIAL CLÍNICO (endpoints simulados)                       */
+/* Contrato: HistorialClinicoController (.NET)                          */
+/* ================================================================== */
+
+/** Tabla Paciente -> PacienteResumen (calcula edad a partir de FechaNacimiento). */
+function toResumen(p: Paciente): PacienteResumen {
+  const nacimiento = new Date(p.fechaNacimiento);
+  let edad = new Date().getFullYear() - nacimiento.getFullYear();
+  const hoy = new Date();
+  if (hoy.getMonth() < nacimiento.getMonth() ||
+      (hoy.getMonth() === nacimiento.getMonth() && hoy.getDate() < nacimiento.getDate())) {
+    edad--;
+  }
+  return {
+    idPaciente: p.idPaciente,
+    nombres: p.nombres,
+    apellidos: p.apellidos,
+    dpi: p.dpi,
+    fechaNacimiento: p.fechaNacimiento,
+    edadAnios: Math.max(edad, 0),
+    sexo: p.sexo,
+    telefono: p.telefono,
+    correo: p.correo,
+    activo: p.activo,
+  };
+}
+
+/** Ficha del historial clínico: GET /api/HistorialClinico/{idPaciente} */
+export function mockObtenerFichaHistorial(idPaciente: number): Observable<FichaHistorial> {
+  const paciente = PACIENTES.find(p => p.idPaciente === idPaciente);
+  if (!paciente) throw new Error(`Paciente ${idPaciente} no encontrado`);
+
+  const consultas = CONSULTAS.filter(c => c.idPaciente === idPaciente)
+    .sort((a, b) => b.fechaConsulta.localeCompare(a.fechaConsulta));
+  const idsConsultas = consultas.map(c => c.idConsulta);
+
+  return of({
+    paciente: toResumen(paciente),
+    consultas,
+    // Diagnósticos/tratamientos vinculados a las consultas del paciente (FK IdConsulta)
+    diagnosticos: DIAGNOSTICOS.filter(d => idsConsultas.includes(d.idConsulta))
+      .sort((a, b) => b.fechaRegistro.localeCompare(a.fechaRegistro)),
+    tratamientos: TRATAMIENTOS.filter(t => idsConsultas.includes(t.idConsulta))
+      .sort((a, b) => b.fechaInicio.localeCompare(a.fechaInicio)),
+    examenes: EXAMENES.filter(e => e.idPaciente === idPaciente)
+      .sort((a, b) => b.fechaExamen.localeCompare(a.fechaExamen)),
+    evoluciones: EVOLUCIONES.filter(e => e.idPaciente === idPaciente)
+      .sort((a, b) => b.fechaEvolucion.localeCompare(a.fechaEvolucion)),
+    habitaciones: HABITACIONES.filter(h => h.idPaciente === idPaciente),
+  }).pipe(delay(DEMORA));
+}
+
+/** Listado global filtrable de consultas (inciso i). */
+export function mockListarConsultas(filtro?: string): Observable<Consulta[]> {
+  const q = (filtro ?? '').trim().toLowerCase();
+  const lista = !q
+    ? [...CONSULTAS]
+    : CONSULTAS.filter(c =>
+        `${c.medicoNombre} ${c.sucursalNombre} ${c.motivoConsulta ?? ''} ${c.sintomas ?? ''}`
+          .toLowerCase().includes(q));
+  return of(lista.sort((a, b) => b.fechaConsulta.localeCompare(a.fechaConsulta))).pipe(delay(DEMORA));
+}
+
+/** Registro de examen (tabla Examen): POST /api/HistorialClinico/Examenes */
+export function mockRegistrarExamen(data: {
+  idPaciente: number; idConsulta: number | null; idMedico: number;
+  nombreExamen: string; fechaExamen: string; resultado: string;
+}): Observable<Examen> {
+  const med = MEDICOS.find(m => m.idEmpleado === data.idMedico);
+  const nuevo: Examen = {
+    idExamen: ++SEQ_EXAMEN,
+    idPaciente: data.idPaciente,
+    idConsulta: data.idConsulta,
+    idMedico: data.idMedico,
+    medicoNombre: med?.nombre ?? 'Médico',
+    nombreExamen: data.nombreExamen,
+    fechaExamen: data.fechaExamen,
+    resultado: data.resultado || null,
+  };
+  EXAMENES.unshift(nuevo);
+  return of(nuevo).pipe(delay(DEMORA));
+}
+
+/** Registro de evolución (tabla Evolucion): POST /api/HistorialClinico/Evoluciones */
+export function mockRegistrarEvolucion(data: {
+  idPaciente: number; idConsulta: number | null; idMedico: number;
+  fechaEvolucion: string; descripcion: string;
+}): Observable<Evolucion> {
+  const med = MEDICOS.find(m => m.idEmpleado === data.idMedico);
+  const nueva: Evolucion = {
+    idEvolucion: ++SEQ_EVOLUCION,
+    idPaciente: data.idPaciente,
+    idConsulta: data.idConsulta,
+    idMedico: data.idMedico,
+    medicoNombre: med?.nombre ?? 'Médico',
+    fechaEvolucion: data.fechaEvolucion,
+    descripcion: data.descripcion,
+  };
+  EVOLUCIONES.unshift(nueva);
+  return of(nueva).pipe(delay(DEMORA));
+}
+
+/** Edición de registros clínicos ya asignados (PUT genérico sobre arrays en memoria). */
+export function mockActualizarClinical(kind: 'diagnostico' | 'examen' | 'evolucion',
+                                       id: number,
+                                       cambios: Record<string, unknown>): Observable<unknown> {
+  if (kind === 'diagnostico') {
+    const idx = DIAGNOSTICOS.findIndex(d => d.idDiagnostico === id);
+    if (idx < 0) throw new Error(`Diagnóstico ${id} no encontrado`);
+    DIAGNOSTICOS[idx] = { ...DIAGNOSTICOS[idx], ...cambios } as Diagnostico;
+    return of(DIAGNOSTICOS[idx]).pipe(delay(DEMORA));
+  }
+  if (kind === 'examen') {
+    const idx = EXAMENES.findIndex(e => e.idExamen === id);
+    if (idx < 0) throw new Error(`Examen ${id} no encontrado`);
+    EXAMENES[idx] = { ...EXAMENES[idx], ...cambios } as Examen;
+    return of(EXAMENES[idx]).pipe(delay(DEMORA));
+  }
+  const idx = EVOLUCIONES.findIndex(e => e.idEvolucion === id);
+  if (idx < 0) throw new Error(`Evolución ${id} no encontrada`);
+  EVOLUCIONES[idx] = { ...EVOLUCIONES[idx], ...cambios } as Evolucion;
+  return of(EVOLUCIONES[idx]).pipe(delay(DEMORA));
+}
+
+/** Catálogo de pacientes para el buscador del historial clínico. */
+export function mockCatalogoPacientesResumen(): Observable<PacienteResumen[]> {
+  return of(PACIENTES.filter(p => p.activo).map(toResumen)).pipe(delay(200));
 }

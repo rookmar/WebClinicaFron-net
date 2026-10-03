@@ -17,7 +17,26 @@ export const MOCK_MENU: MenuItem[] = [
         icon: 'bi bi-clipboard2-pulse',
         roles: ['ADMIN', 'MEDICO'],
       },
+      {
+        label: 'Empleados',
+        route: '/dashboard/empleados',
+        icon: 'bi bi-person-badge',
+        roles: ['ADMIN'],
+      },
       { label: 'Medicamentos', route: '/dashboard/inventario', icon: 'bi bi-capsule' },
+      {
+        label: 'Ventas de farmacia',
+        icon: 'bi bi-cash-stack',
+        children: [
+          { label: 'Registrar venta', route: '/dashboard/ventas/nueva', icon: 'bi bi-cart-plus' },
+          { label: 'Historial de ventas', route: '/dashboard/ventas', icon: 'bi bi-receipt' },
+        ],
+      },
+      {
+        label: 'Habitaciones',
+        route: '/dashboard/habitaciones',
+        icon: 'bi bi-door-closed',
+      },
       {
         label: 'Inventario: entradas/salidas',
         route: '/dashboard/inventario/movimientos',
