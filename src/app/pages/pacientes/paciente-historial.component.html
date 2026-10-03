@@ -17,7 +17,7 @@
     </div>
   }
 
-  @if (historial(); as h) {
+  @if (ficha(); as h) {
 
     <!-- ===== Ficha del paciente (datos generales) ===== -->
     <section class="card ficha">
@@ -40,9 +40,17 @@
         } @else {
           <span class="badge text-bg-secondary">Inactivo</span>
         }
-        <button type="button" class="btn btn-primary" (click)="abrirConsulta()">
-          <i class="bi bi-stethoscope"></i> Registrar consulta
-        </button>
+        <div class="d-flex flex-wrap gap-2 justify-content-end">
+          <button type="button" class="btn btn-primary" (click)="abrirConsulta()">
+            <i class="bi bi-stethoscope"></i> Registrar consulta
+          </button>
+          <button type="button" class="btn btn-outline-info" (click)="abrirExamen()">
+            <i class="bi bi-microscope"></i> Examen
+          </button>
+          <button type="button" class="btn btn-outline-warning" (click)="abrirEvolucion()">
+            <i class="bi bi-activity"></i> Evolución
+          </button>
+        </div>
       </div>
     </section>
 
@@ -89,9 +97,21 @@
         </button>
       </li>
       <li class="nav-item">
+        <button type="button" class="nav-link" [class.active]="tab === 'examenes'"
+                (click)="cambiarTab('examenes')">
+          <i class="bi bi-microscope"></i> Exámenes
+        </button>
+      </li>
+      <li class="nav-item">
         <button type="button" class="nav-link" [class.active]="tab === 'tratamientos'"
                 (click)="cambiarTab('tratamientos')">
           <i class="bi bi-capsule"></i> Tratamientos
+        </button>
+      </li>
+      <li class="nav-item">
+        <button type="button" class="nav-link" [class.active]="tab === 'evoluciones'"
+                (click)="cambiarTab('evoluciones')">
+          <i class="bi bi-activity"></i> Evolución
         </button>
       </li>
     </ul>
@@ -132,6 +152,57 @@
                       }
                     </p>
                   }
+                  @if (examenesDe(c.idConsulta).length) {
+                    <p class="line"><b>Exámenes:</b>
+                      @for (e of examenesDe(c.idConsulta); track e.idExamen) {
+                        <span class="pill ghost">
+                          <i class="bi bi-microscope"></i> {{ e.nombreExamen }}
+                          @if (examenPendiente(e)) { — pendiente }
+                        </span>
+                      }
+                    </p>
+                  }
+                  @if (evolucionesDe(c.idConsulta).length) {
+                    <p class="line"><b>Evolución:</b>
+                      @for (ev of evolucionesDe(c.idConsulta); track ev.idEvolucion) {
+                        <span class="pill ghost">
+                          <i class="bi bi-activity"></i> {{ fmtFecha(ev.fechaEvolucion) }} — {{ ev.descripcion }}
+                        </span>
+                      }
+                    </p>
+                  }
+                </div>
+              </li>
+            }
+
+            <!-- Exámenes/evoluciones no vinculados a una consulta también aparecen en la línea -->
+            @for (ev of h.evoluciones.filter(x => !x.idConsulta || !h.consultas.some(cc => cc.idConsulta === x.idConsulta)); track ev.idEvolucion) {
+              <li class="tl-item">
+                <span class="tl-dot evol"></span>
+                <div class="tl-body">
+                  <header>
+                    <strong>Evolución (seguimiento)</strong>
+                    <span class="date">{{ fmtFechaHora(ev.fechaEvolucion) }}</span>
+                  </header>
+                  <p class="who"><i class="bi bi-person-badge"></i> {{ ev.medicoNombre }}</p>
+                  <p class="line">{{ ev.descripcion }}</p>
+                </div>
+              </li>
+            }
+            @for (e of h.examenes.filter(x => !x.idConsulta || !h.consultas.some(cc => cc.idConsulta === x.idConsulta)); track e.idExamen) {
+              <li class="tl-item">
+                <span class="tl-dot exam"></span>
+                <div class="tl-body">
+                  <header>
+                    <strong>Examen: {{ e.nombreExamen }}</strong>
+                    <span class="date">{{ fmtFechaHora(e.fechaExamen) }}</span>
+                  </header>
+                  <p class="who"><i class="bi bi-person-badge"></i> {{ e.medicoNombre }}</p>
+                  <p class="line">
+                    <b>Resultado:</b>
+                    @if (examenPendiente(e)) { <span class="badge text-bg-warning">Pendiente</span> }
+                    @else { {{ e.resultado }} }
+                  </p>
                 </div>
               </li>
             }
@@ -171,11 +242,32 @@
             @if (diagnosticosDe(c.idConsulta).length || tratamientosDe(c.idConsulta).length) {
               <div class="vinculados">
                 <div class="vcol">
-                  <h6><i class="bi bi-clipboard2-pulse"></i> Diagnósticos vinculados</h6>
+                  <h6><i class="bi bi-clipboard2-pulse"></i> Diagnósticos asignados</h6>
                   @for (d of diagnosticosDe(c.idConsulta); track d.idDiagnostico) {
                     <div class="vitem dx-item">
-                      <span>{{ d.descripcion }}</span>
-                      <small>{{ d.medicoNombre }} · {{ fmtFechaHora(d.fechaRegistro) }}</small>
+                      @if (editandoDx === d.idDiagnostico) {
+                        <!-- iii. Corrección del diagnóstico asignado por el médico -->
+                        <textarea class="form-control form-control-sm mb-1" rows="2"
+                                  [(ngModel)]="formEditDx.descripcion"></textarea>
+                        <div class="d-flex gap-1">
+                          <button type="button" class="btn btn-sm btn-primary"
+                                  [disabled]="guardando" (click)="guardarEdicionDx()">
+                            <i class="bi bi-check-lg"></i> Guardar
+                          </button>
+                          <button type="button" class="btn btn-sm btn-light" (click)="cancelarEdicionDx()">
+                            Cancelar
+                          </button>
+                        </div>
+                      } @else {
+                        <div class="d-flex justify-content-between align-items-start gap-2">
+                          <span>{{ d.descripcion }}</span>
+                          <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-1"
+                                  title="Corregir diagnóstico asignado" (click)="abrirEdicionDx(d)">
+                            <i class="bi bi-pencil"></i>
+                          </button>
+                        </div>
+                        <small>{{ d.medicoNombre }} · {{ fmtFechaHora(d.fechaRegistro) }}</small>
+                      }
                     </div>
                   }
                 </div>
@@ -221,6 +313,70 @@
       </section>
     }
 
+    <!-- ---------- TAB: EXÁMENES (inciso ii) ---------- -->
+    @if (tab === 'examenes') {
+      <section class="card panel">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <h6 class="panel-title mb-0"><i class="bi bi-microscope"></i> Exámenes realizados por el paciente</h6>
+          <button type="button" class="btn btn-sm btn-info text-white" (click)="abrirExamen()">
+            <i class="bi bi-plus-lg"></i> Registrar examen
+          </button>
+        </div>
+        <div class="table-responsive">
+          <table class="table align-middle mb-0">
+            <thead>
+              <tr>
+                <th>#</th><th>Examen</th><th>Fecha</th><th>Ordenado por</th>
+                <th>Consulta</th><th>Resultado</th><th></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (e of h.examenes; track e.idExamen) {
+                <tr>
+                  <td>{{ e.idExamen }}</td>
+                  <td class="fw-semibold">{{ e.nombreExamen }}</td>
+                  <td class="small">{{ fmtFechaHora(e.fechaExamen) }}</td>
+                  <td class="small">{{ e.medicoNombre }}</td>
+                  <td>{{ e.idConsulta ? '#' + e.idConsulta : '—' }}</td>
+                  <td class="small" style="max-width: 320px;">
+                    @if (editandoExam === e.idExamen) {
+                      <!-- Captura posterior del resultado -->
+                      <textarea class="form-control form-control-sm mb-1" rows="2"
+                                [(ngModel)]="formEditExam.resultado"
+                                placeholder="Escriba el resultado del examen…"></textarea>
+                      <div class="d-flex gap-1">
+                        <button type="button" class="btn btn-sm btn-primary"
+                                [disabled]="guardando" (click)="guardarResultadoExam()">
+                          <i class="bi bi-check-lg"></i> Guardar
+                        </button>
+                        <button type="button" class="btn btn-sm btn-light" (click)="cancelarResultadoExam()">
+                          Cancelar
+                        </button>
+                      </div>
+                    } @else if (examenPendiente(e)) {
+                      <span class="badge text-bg-warning">Resultado pendiente</span>
+                    } @else {
+                      {{ e.resultado }}
+                    }
+                  </td>
+                  <td class="text-end">
+                    @if (editandoExam !== e.idExamen) {
+                      <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-1"
+                              title="Capturar / corregir resultado" (click)="abrirResultadoExam(e)">
+                        <i class="bi bi-pencil"></i>
+                      </button>
+                    }
+                  </td>
+                </tr>
+              } @empty {
+                <tr><td colspan="7" class="text-center text-muted py-4">Sin exámenes registrados.</td></tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </section>
+    }
+
     <!-- ---------- TAB: TRATAMIENTOS ---------- -->
     @if (tab === 'tratamientos') {
       <section class="card panel table-responsive">
@@ -254,6 +410,42 @@
             }
           </tbody>
         </table>
+      </section>
+    }
+
+    <!-- ---------- TAB: EVOLUCIÓN (inciso iv) ---------- -->
+    @if (tab === 'evoluciones') {
+      <section class="card panel">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <h6 class="panel-title mb-0"><i class="bi bi-activity"></i> Evolución del paciente (seguimiento médico)</h6>
+          <button type="button" class="btn btn-sm btn-warning" (click)="abrirEvolucion()">
+            <i class="bi bi-plus-lg"></i> Registrar evolución
+          </button>
+        </div>
+        @if (h.evoluciones.length) {
+          <ol class="timeline">
+            @for (ev of h.evoluciones; track ev.idEvolucion) {
+              <li class="tl-item">
+                <span class="tl-dot evol"></span>
+                <div class="tl-body">
+                  <header>
+                    <strong>Evolución #{{ ev.idEvolucion }}</strong>
+                    <span class="date">{{ fmtFechaHora(ev.fechaEvolucion) }}</span>
+                  </header>
+                  <p class="who">
+                    <i class="bi bi-person-badge"></i> {{ ev.medicoNombre }}
+                    @if (ev.idConsulta) {
+                      <span class="pill ghost"><i class="bi bi-calendar2-heart"></i> Consulta #{{ ev.idConsulta }}</span>
+                    }
+                  </p>
+                  <p class="line">{{ ev.descripcion }}</p>
+                </div>
+              </li>
+            }
+          </ol>
+        } @else {
+          <p class="empty">Sin notas de evolución. Use «Registrar evolución» para el seguimiento médico.</p>
+        }
       </section>
     }
 
@@ -359,6 +551,18 @@
                       placeholder="Ej.: Hipertensión arterial esencial (CIE-10 I10)"></textarea>
             <div class="form-text">Se registra a nombre de {{ consultaSel.medicoNombre }}.</div>
           } @else {
+            <label class="form-label">Medicamento (catálogo de Inventario)</label>
+            <select class="form-select" [(ngModel)]="formTratamiento.medicamentoId"
+                    (ngModelChange)="onMedicamentoSel()">
+              <option value="">— Sin medicamento / otro —</option>
+              @for (m of medicamentos; track m.idMedicamento) {
+                <option [ngValue]="m.idMedicamento">{{ m.nombre }} (stock: {{ m.stockTotal }})</option>
+              }
+            </select>
+            <div class="form-text mb-2">
+              Solo referencia el medicamento; la salida de bodega se registra en Inventario → Movimientos.
+            </div>
+
             <label class="form-label">Descripción <span class="req">*</span></label>
             <textarea class="form-control" rows="2" [(ngModel)]="formTratamiento.descripcion"
                       placeholder="Ej.: Losartán 50 mg cada 24 horas"></textarea>
@@ -385,6 +589,116 @@
           <button type="button" class="btn btn-primary" [disabled]="guardando"
                   (click)="modalClinico === 'diagnostico' ? guardarDiagnostico() : guardarTratamiento()">
             <i class="bi bi-save"></i> Guardar
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- ============ MODAL EXAMEN (inciso ii) ============ -->
+@if (modalExamen && ficha(); as h) {
+  <div class="modal-backdrop show" (click)="modalExamen = false"></div>
+  <div class="modal d-block show" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-microscope"></i> Registrar examen</h5>
+          <button type="button" class="btn-close" (click)="modalExamen = false"></button>
+        </div>
+        <div class="modal-body">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label">Nombre del examen <span class="req">*</span></label>
+              <input type="text" class="form-control" maxlength="150"
+                     [(ngModel)]="formExamen.nombreExamen" placeholder="Ej.: Hemograma completo" />
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Médico ordenante <span class="req">*</span></label>
+              <select class="form-select" [(ngModel)]="formExamen.idMedico">
+                <option value="">— Seleccione —</option>
+                @for (m of medicos; track m.idEmpleado) {
+                  <option [ngValue]="m.idEmpleado">{{ m.nombre }}@if (m.especialidad) { — {{ m.especialidad }} }</option>
+                }
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Fecha del examen <span class="req">*</span></label>
+              <input type="datetime-local" class="form-control" [(ngModel)]="formExamen.fechaExamen" />
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Consulta vinculada</label>
+              <select class="form-select" [(ngModel)]="formExamen.idConsulta">
+                <option value="">— Sin consulta —</option>
+                @for (c of h.consultas; track c.idConsulta) {
+                  <option [ngValue]="c.idConsulta">#{{ c.idConsulta }} · {{ fmtFechaHora(c.fechaConsulta) }}</option>
+                }
+              </select>
+            </div>
+            <div class="col-12">
+              <label class="form-label">Resultado</label>
+              <textarea class="form-control" rows="3" [(ngModel)]="formExamen.resultado"
+                        placeholder="Puede dejar vacío y capturarlo después…"></textarea>
+              <div class="form-text">Si aún no hay resultado, guárdelo vacío: aparecerá como "pendiente".</div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-light" (click)="modalExamen = false">Cancelar</button>
+          <button type="button" class="btn btn-info text-white" [disabled]="guardando" (click)="guardarExamen()">
+            <i class="bi bi-save"></i> Guardar examen
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- ============ MODAL EVOLUCIÓN (inciso iv) ============ -->
+@if (modalEvolucion && ficha(); as h) {
+  <div class="modal-backdrop show" (click)="modalEvolucion = false"></div>
+  <div class="modal d-block show" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-activity"></i> Registrar evolución</h5>
+          <button type="button" class="btn-close" (click)="modalEvolucion = false"></button>
+        </div>
+        <div class="modal-body">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label">Médico <span class="req">*</span></label>
+              <select class="form-select" [(ngModel)]="formEvolucion.idMedico">
+                <option value="">— Seleccione —</option>
+                @for (m of medicos; track m.idEmpleado) {
+                  <option [ngValue]="m.idEmpleado">{{ m.nombre }}@if (m.especialidad) { — {{ m.especialidad }} }</option>
+                }
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Fecha y hora <span class="req">*</span></label>
+              <input type="datetime-local" class="form-control" [(ngModel)]="formEvolucion.fechaEvolucion" />
+            </div>
+            <div class="col-12">
+              <label class="form-label">Consulta vinculada</label>
+              <select class="form-select" [(ngModel)]="formEvolucion.idConsulta">
+                <option value="">— Seguimiento libre (sin consulta) —</option>
+                @for (c of h.consultas; track c.idConsulta) {
+                  <option [ngValue]="c.idConsulta">#{{ c.idConsulta }} · {{ fmtFechaHora(c.fechaConsulta) }}</option>
+                }
+              </select>
+            </div>
+            <div class="col-12">
+              <label class="form-label">Descripción de la evolución <span class="req">*</span></label>
+              <textarea class="form-control" rows="4" [(ngModel)]="formEvolucion.descripcion"
+                        placeholder="Signos vitales, respuesta al tratamiento, cambios clínicos observados…"></textarea>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-light" (click)="modalEvolucion = false">Cancelar</button>
+          <button type="button" class="btn btn-warning" [disabled]="guardando" (click)="guardarEvolucion()">
+            <i class="bi bi-save"></i> Guardar evolución
           </button>
         </div>
       </div>

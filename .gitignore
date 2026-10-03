@@ -1,8 +1,8 @@
-# Angular build cache
-.angular/cache/
-
 # Dependencies
 node_modules/
 
 # Build artifacts
 dist/
+
+# Angular cache
+.angular/
