@@ -89,6 +89,15 @@ export const routes: Routes = [
           import('./pages/ventas/ventas-nueva.component')
             .then(m => m.VentasNuevaComponent),
       },
+      // ---------- Módulo Citas ----------
+      {
+        // Programación paciente↔médico, disponibilidad por franjas,
+        // estados (Programada/Confirmada/Atendida/Cancelada) en tiempo real por SignalR.
+        path: 'citas',
+        loadComponent: () =>
+          import('./pages/citas/citas-list.component')
+            .then(m => m.CitasListComponent),
+      },
     ],
   },
   { path: '', redirectTo: 'login', pathMatch: 'full' },
