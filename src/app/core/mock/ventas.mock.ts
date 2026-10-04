@@ -11,8 +11,12 @@ import {
 } from '../models/venta.model';
 import {
   estaVencido,
+  getLotesRef,
+  getMovimientosRef,
   mockListarLotes,
   mockListarMedicamentos,
+  registrarMovimiento,
+  snapshotInventarioSync,
 } from './inventario.mock';
 
 /**
@@ -152,7 +156,7 @@ export function mockRegistrarVenta(payload: {
   }
 
   // iv. Validar disponibilidad ANTES de completar la venta (lote a lote)
-  const validacion = validarYDescontar(payload.detalles);
+  const validacion = validarYDescontar(payload.detalles, payload.vendedor);
   if ('error' in validacion) {
     return throwError(() => new Error(validacion.error));
   }
@@ -214,35 +218,44 @@ export function mockResumenVentas(): Observable<ResumenVentas> {
   }).pipe(delay(DEMORA));
 }
 
-/** Snapshot synchronous del estado compartido de inventario (mismo array LOTES).
- *  En modo mock los endpoints devuelven `of(...)` sincrónico, por lo que el
- *  valor queda disponible antes de continuar. */
+/** Snapshot síncrono y clonado del estado compartido de inventario (mismo array
+ *  LOTES). BUG CORREGIDO: se usaba `mockListarMedicamentos().subscribe()` que
+ *  ahora aplica `delay()` interno, por lo que la variable quedaba vacía al
+ *  leerla de forma síncrona → catálogo vacío y ventas que nunca completaban. */
 function snapshotMedicamentos(): MedicamentoConLotes[] {
-  let medicamentos: MedicamentoConLotes[] = [];
-  mockListarMedicamentos(undefined, false).subscribe(l => (medicamentos = l)).unsubscribe();
-  return medicamentos;
+  return snapshotInventarioSync();
 }
 
 /** Descuenta stock directamente sobre el array LOTES del mock de inventario
  *  (misma referencia que verán las vistas de inventario/movimientos) e inserta
- *  el movimiento de salida correspondiente. */
-function descontarYMovilizar(detalles: Array<{ idLote: number; cantidad: number; precioUnitario: number }>): { filas: FilaDetalle[] } | { error: string } {
-  const meds = snapshotMedicamentos();
+ *  el movimiento de salida correspondiente en la lista compartida MOVIMIENTOS. */
+function descontarYMovilizar(detalles: Array<{ idLote: number; cantidad: number; precioUnitario: number }>,
+                             vendedor: VendedorInfo): { filas: FilaDetalle[] } | { error: string } {
+  // Mutación directa sobre los arrays compartidos LOTESS/MOVIMIENTOS del mock
+  const movs = getMovimientosRef();
   const filas: FilaDetalle[] = [];
   for (const d of detalles) {
-    const med = meds.find(m => m.lotes.some(l => l.idLote === d.idLote));
-    if (!med) return { error: 'LOTE_NOT_FOUND' };
-    const lote = med.lotes.find(l => l.idLote === d.idLote)!;
+    const idx = getLotesRef().findIndex(l => l.idLote === d.idLote);
+    if (idx < 0) return { error: 'LOTE_NOT_FOUND' };
+    const lote = getLotesRef()[idx];
+    if (estaVencido(lote)) return { error: 'EXPIRED_LOTE' };
     if (d.cantidad > lote.cantidadDisponible) return { error: 'INSUFFICIENT_STOCK' };
     const stockAnterior = lote.cantidadDisponible;
-    lote.cantidadDisponible = stockAnterior - d.cantidad;   // iii. actualización automática de existencia
+    // iii. Actualización automática de existencia (transacción simulada: o todo, o nada)
+    getLotesRef()[idx] = { ...lote, cantidadDisponible: stockAnterior - d.cantidad };
+    const actualizado = getLotesRef()[idx];
+    movs.unshift(registrarMovimiento(
+      actualizado, 'Salida', 'Venta', d.cantidad,
+      `Venta #${SEQ_VENTA + 1} · ${d.cantidad} u @ ${d.precioUnitario.toFixed(2)}`,
+      { id: vendedor.idUsuario, nombre: vendedor.usuarioNombre },
+    ));
     filas.push({
-      idLote: lote.idLote, numeroLote: lote.numeroLote,
-      idMedicamento: lote.idMedicamento, medicamentoCodigo: lote.medicamentoCodigo,
-      medicamentoNombre: lote.medicamentoNombre,
+      idLote: actualizado.idLote, numeroLote: actualizado.numeroLote,
+      idMedicamento: actualizado.idMedicamento, medicamentoCodigo: actualizado.medicamentoCodigo,
+      medicamentoNombre: actualizado.medicamentoNombre,
       cantidad: d.cantidad, precioUnitario: d.precioUnitario,
       subtotal: +(d.cantidad * d.precioUnitario).toFixed(2),
-      stockAnterior, stockNuevo: lote.cantidadDisponible,
+      stockAnterior, stockNuevo: actualizado.cantidadDisponible,
     });
   }
   return { filas };
@@ -258,6 +271,7 @@ type FilaDetalle = Omit<VentaDetalle, 'idVentaDetalle' | 'idVenta'>;
  *  Devuelve { error } si algo falla (venta atómica: o todo, o nada). */
 function validarYDescontar(
   detalles: Array<{ idLote: number; cantidad: number; precioUnitario: number }>,
+  vendedor: VendedorInfo,
 ): { filas: FilaDetalle[] } | { error: string } {
   // Snapshot actualizado de lotes (estado compartido con inventario)
   const medicamentos = snapshotMedicamentos();
@@ -280,5 +294,5 @@ function validarYDescontar(
   }
 
   // iii. Descontar existencias (mutación del estado compartido de inventario.mock)
-  return descontarYMovilizar(detalles);
+  return descontarYMovilizar(detalles, vendedor);
 }

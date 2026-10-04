@@ -148,6 +148,20 @@ export function proximoVencer(l: LoteMedicamento): boolean {
   return diffDias <= DIAS_PROXIMO_VENCIMIENTO;
 }
 
+/** Snapshot SINCRÓNICO y profundo del catálogo (para transacciones simuladas
+ *  como registrar una venta). Se clona para que la vista se congele al momento
+ *  de la operación: si el stock cambia después, los números del ticket siguen
+ *  siendo los reales del instante de la venta. */
+export function snapshotInventarioSync(): MedicamentoConLotes[] {
+  return MEDICAMENTOS.filter(m => m.activo).map(med => {
+    const lotes = LOTES.filter(l => l.idMedicamento === med.idMedicamento)
+      .sort((a, b) => a.fechaVencimiento.localeCompare(b.fechaVencimiento))
+      .map(l => ({ ...l }));
+    const stockTotal = lotes.filter(l => !estaVencido(l)).reduce((s, l) => s + l.cantidadDisponible, 0);
+    return { ...med, lotes, stockTotal, stockMinimoAlerta: stockTotal <= STOCK_MINIMO_ALERTA };
+  });
+}
+
 /** Estado visual del lote (regla de negocio derivada, no almacenada en BD) */
 export function estadoLote(l: LoteMedicamento): EstadoLote {
   if (estaVencido(l)) return 'Vencido';
@@ -270,9 +284,11 @@ export function mockActualizarLote(id: number, data: Partial<LoteMedicamento>): 
   return of(LOTES[idx]).pipe(delay(DEMORA));
 }
 
-function registrarMovimiento(
+/** Registra un movimiento de inventario (exportado para que el módulo Ventas
+ *  inserte sus salidas en la misma lista compartida MOVIMIENTOS). */
+export function registrarMovimiento(
   lote: LoteMedicamento, tipo: 'Entrada' | 'Salida', motivo: MovimientoInventario['motivo'],
-  cantidad: number, referencia: string,
+  cantidad: number, referencia: string, usuario?: { id: number; nombre: string },
 ): MovimientoInventario {
   return {
     idMovimiento: ++SEQ_MOVIMIENTO,
@@ -282,10 +298,20 @@ function registrarMovimiento(
     medicamentoNombre: lote.medicamentoNombre,
     tipo, motivo, cantidad,
     referencia: referencia || null,
-    idUsuario: 1,
-    usuarioNombre: 'demo',
+    idUsuario: usuario?.id ?? 1,
+    usuarioNombre: usuario?.nombre ?? 'demo',
     fechaMovimiento: new Date().toISOString(),
   };
+}
+
+/** Lista compartida de movimientos (para inserción atómica desde ventas.mock) */
+export function getMovimientosRef(): MovimientoInventario[] {
+  return MOVIMIENTOS;
+}
+
+/** Referencia viva al array compartido LOTES (mutación atómica desde ventas.mock) */
+export function getLotesRef(): LoteMedicamento[] {
+  return LOTES;
 }
 
 /** iii. Entradas y salidas por ventas o uso clínico.

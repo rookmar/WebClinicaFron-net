@@ -45,7 +45,14 @@ export const MOCK_MENU: MenuItem[] = [
       { label: 'Usuarios', route: '/dashboard/usuarios', icon: 'bi bi-person-gear', roles: ['ADMIN'] },
     ],
   },
-  { label: 'Citas', route: '/dashboard/citas', icon: 'bi bi-calendar-check' },
+  {
+    label: 'Citas',
+    icon: 'bi bi-calendar-check',
+    children: [
+      { label: 'Agenda del día', route: '/dashboard/citas', icon: 'bi bi-calendar-week' },
+      { label: 'Pacientes', route: '/dashboard/pacientes', icon: 'bi bi-people', roles: ['ADMIN', 'MEDICO', 'RECEPCION'] },
+    ],
+  },
   { label: 'Reportes', route: '/dashboard/reportes', icon: 'bi bi-bar-chart', roles: ['ADMIN', 'MEDICO'] },
 ];
 
